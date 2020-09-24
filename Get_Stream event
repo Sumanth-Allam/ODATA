@@ -1,0 +1,46 @@
+METHOD /iwbep/if_mgw_appl_srv_runtime~get_stream.
+
+  DATA : wa_entity TYPE zcl_zepm_code_mpc=>ts_product.
+
+  TRY.
+      CALL METHOD me->productset_get_entity
+        EXPORTING
+          iv_entity_name          = iv_entity_name
+          iv_entity_set_name      = iv_entity_set_name
+          iv_source_name          = iv_source_name
+          it_key_tab              = it_key_tab
+          io_tech_request_context = io_tech_request_context
+          it_navigation_path      = it_navigation_path
+        IMPORTING
+          er_entity               = wa_entity
+          es_response_context     = es_response_context.
+    CATCH /iwbep/cx_mgw_busi_exception.
+    CATCH /iwbep/cx_mgw_tech_exception.
+  ENDTRY.
+
+  DATA : o_api    TYPE REF TO if_mr_api,
+         wa_media TYPE ty_s_media_resource.
+  IF wa_entity-product_pic_url IS NOT INITIAL.
+    o_api = cl_mime_repository_api=>if_mr_api~get_api( ).
+    IF o_api IS NOT INITIAL.
+      CALL METHOD o_api->get
+        EXPORTING
+          i_url              = wa_entity-product_pic_url
+        IMPORTING
+          e_mime_type        = wa_media-mime_type
+          e_content          = wa_media-value
+        EXCEPTIONS
+          parameter_missing  = 1
+          error_occured      = 2
+          not_found          = 3
+          permission_failure = 4
+          OTHERS             = 5.
+      IF sy-subrc <> 0.
+*       Implement suitable error handling here
+      ENDIF.
+
+      "RETURN THE VAUE
+      copy_data_to_ref( EXPORTING is_data = wa_media
+                         CHANGING cr_data = er_stream ).
+    ENDIF.
+  ENDIF.
