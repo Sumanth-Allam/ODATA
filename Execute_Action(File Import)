@@ -1,0 +1,37 @@
+  METHOD /iwbep/if_mgw_appl_srv_runtime~execute_action.
+
+     DATA : wa_param LIKE LINE OF it_parameter,
+            lt_pro   TYPE zcl_zepm_code_mpc=>tt_product.
+     CASE  iv_action_name.
+       WHEN 'Function_Import'.
+         READ TABLE it_parameter INTO wa_param WITH KEY name = 'FI_CURRENCY_CODE'.
+         IF sy-subrc IS INITIAL.
+           SELECT product_id
+                  type_code
+                  category
+                  name_guid
+                  desc_guid
+                  supplier_guid
+                  tax_tarif_code
+                  measure_unit
+                  currency_code
+                  product_pic_url
+             FROM snwd_pd
+             INTO TABLE lt_pro
+             WHERE currency_code EQ wa_param-value.
+         ENDIF.
+         IF lt_pro IS NOT INITIAL.
+           copy_data_to_ref(
+             EXPORTING
+               is_data =  lt_pro
+             CHANGING
+               cr_data = er_data
+           ).
+         ENDIF.
+     ENDCASE.
+
+
+   ENDMETHOD.
+
+"URL
+/sap/opu/odata/sap/ZFUNC_IMPORT_SRV/FI_CATEGORY?PRDBYCAT='Notebooks' : function import
