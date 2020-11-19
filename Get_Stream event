@@ -1,3 +1,40 @@
+To upload image content to Database table we use UPDATE_STREAM method and 
+To read image content from Database table we use GET_STREAM method.
+
+First we create the db table like 
+we create the project and entity type and sets.For Entiity type we have to check the checkbox Media.
+  METHOD /iwbep/if_mgw_appl_srv_runtime~get_stream.
+    READ TABLE it_key_tab INTO DATA(wa_key) INDEX 1.
+    IF sy-subrc IS INITIAL.
+      SELECT SINGLE * FROM zmedia INTO @DATA(wa_file) WHERE filename = @wa_key-value.
+    ENDIF.
+    DATA : ls_media TYPE ty_s_media_resource.
+    ls_media-value = wa_file-filecontent.
+    ls_media-mime_type = wa_file-filetype.
+    copy_data_to_ref(
+      EXPORTING
+        is_data = ls_media
+      CHANGING
+        cr_data = er_stream
+    ).
+  ENDMETHOD.
+  
+    METHOD /iwbep/if_mgw_appl_srv_runtime~update_stream.
+    DATA : it_ztable TYPE TABLE OF zmedia,
+           wa_ztable LIKE LINE OF it_ztable.
+    READ TABLE it_key_tab INTO DATA(wa_key) INDEX 1.
+    IF sy-subrc IS INITIAL.
+      wa_ztable-filename = wa_key-value.
+      wa_ztable-mandt = sy-mandt.
+      wa_ztable-cdate = sy-datum.
+      wa_ztable-ctime = sy-uzeit.
+      wa_ztable-filecontent = is_media_resource-value.
+      wa_ztable-filetype = is_media_resource-mime_type.
+      INSERT zmedia FROM wa_ztable.
+    ENDIF.
+  ENDMETHOD.
+  
+
 METHOD /iwbep/if_mgw_appl_srv_runtime~get_stream.
 
   DATA : wa_entity TYPE zcl_zepm_code_mpc=>ts_product.
