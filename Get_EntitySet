@@ -1,0 +1,109 @@
+  METHOD lfa1set_get_entityset.
+
+    DATA : es_entity LIKE LINE OF et_entityset.
+    DATA : it_sort TYPE STANDARD TABLE OF abap_sortorder,
+           wa_sort LIKE LINE OF it_sort.
+
+    DATA : wa_select TYPE  /iwbep/s_cod_select_option.
+    DATA : s_lifnr TYPE RANGE OF lifnr,
+           w_lifnr LIKE LINE OF s_lifnr.
+
+    READ TABLE it_filter_select_options INTO DATA(wa_filter) WITH KEY property = 'Lifnr'
+    TRANSPORTING select_options.
+    IF sy-subrc IS INITIAL.
+      READ TABLE wa_filter-select_options INTO wa_select INDEX 1.
+      IF sy-subrc IS INITIAL.
+        w_lifnr-sign = wa_select-sign.
+        w_lifnr-option = wa_select-option.
+        w_lifnr-low = wa_select-low.
+        w_lifnr-high = wa_select-high.
+      ENDIF.
+      APPEND w_lifnr TO s_lifnr.
+    ENDIF.
+
+    CALL METHOD io_tech_request_context->get_top
+      RECEIVING
+        rv_top = DATA(lv_top).
+
+    IF lv_top IS NOT INITIAL.
+      SELECT a~lifnr,
+              a~land1,
+              a~name1,
+              a~regio,
+              a~adrnr,
+              b~bukrs,
+              b~akont
+                FROM lfa1 AS a
+                INNER JOIN lfb1 AS b ON a~lifnr = b~lifnr
+                INTO TABLE @DATA(it_lfa1)
+                UP TO @lv_top ROWS
+                WHERE land1 = 'IN'.
+    ELSEIF s_lifnr IS NOT INITIAL.
+      SELECT a~lifnr,
+             a~land1,
+             a~name1,
+             a~regio,
+             a~adrnr,
+              b~bukrs,
+              b~akont
+                FROM lfa1 AS a
+                INNER JOIN lfb1 AS b ON a~lifnr = b~lifnr
+                INTO TABLE @DATA(it_lfa12)
+                WHERE a~lifnr IN @s_lifnr.
+    ELSE.
+      SELECT a~lifnr,
+          a~land1,
+          a~name1,
+          a~regio,
+          a~adrnr,
+          b~bukrs,
+          b~akont
+            FROM lfa1 AS a
+            INNER JOIN lfb1 AS b ON a~lifnr = b~lifnr
+            INTO TABLE @DATA(it_lfa11)
+            WHERE land1 = 'IN'.
+    ENDIF.
+
+    IF  it_lfa11 IS NOT INITIAL OR
+      it_lfa12 IS NOT INITIAL.
+      it_lfa1 = it_lfa11.
+    ENDIF.
+
+    LOOP AT it_lfa1 INTO DATA(wa_lfa1).
+      es_entity-lifnr = wa_lfa1-lifnr.
+      es_entity-land1 = wa_lfa1-land1.
+      es_entity-name1 = wa_lfa1-name1.
+      es_entity-regio = wa_lfa1-regio.
+      es_entity-adrnr = wa_lfa1-adrnr.
+      es_entity-bukrs = wa_lfa1-bukrs.
+      es_entity-akont = wa_lfa1-akont.
+      APPEND es_entity TO et_entityset.
+      CLEAR : wa_lfa1,es_entity.
+    ENDLOOP.
+    IF io_tech_request_context->has_inlinecount( ) = abap_true.
+      DESCRIBE TABLE et_entityset LINES es_response_context-count.
+    ENDIF.
+    LOOP AT it_order INTO DATA(wa_order).
+      wa_sort-name = wa_order-property.
+      IF wa_order-order = 'desc'.
+        wa_sort-descending = 'X'.
+      ELSEIF wa_order-order = 'asc'.
+        wa_sort-descending = ' '.
+      ENDIF.
+      APPEND wa_sort TO it_sort.
+      CLEAR : wa_sort,wa_order.
+    ENDLOOP.
+
+    IF it_sort IS NOT INITIAL.
+      SORT et_entityset BY (it_sort).
+    ENDIF.
+*      READ TABLE it_order INTO DATA(wa_order) WITH KEY property = 'Lifnr' TRANSPORTING order.
+*      IF sy-subrc IS INITIAL.
+*        IF  wa_order-order = 'desc'.
+*          SORT et_entityset BY lifnr DESCENDING.
+*        ELSE.
+*          SORT et_entityset BY lifnr ASCENDING.
+*        ENDIF.
+*      ENDIF.
+*    ENDIF.
+  ENDMETHOD.
