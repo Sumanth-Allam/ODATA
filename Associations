@@ -1,0 +1,117 @@
+  METHOD saleheaderset_get_entity.
+
+    READ TABLE it_key_tab INTO DATA(wa_key) WITH KEY name = 'VBELN' TRANSPORTING value.
+    IF sy-subrc IS INITIAL.
+      DATA(v_vbeln) = wa_key-value.
+    ENDIF.
+
+    IF v_vbeln IS NOT INITIAL.
+      SELECT SINGLE  vbeln,
+                     ernam
+                 FROM vbak
+                 INTO @DATA(wa_vbak)
+                 WHERE vbeln EQ @v_vbeln.
+    ENDIF.
+
+    IF wa_vbak IS NOT INITIAL.
+      er_entity-vbeln = wa_vbak-vbeln.
+      er_entity-ernam = wa_vbak-ernam.
+    ENDIF.
+
+  ENDMETHOD.
+  
+    METHOD saleheaderset_get_entityset.
+
+    DATA : wa_entity LIKE LINE OF et_entityset.
+
+    SELECT  vbeln,
+            ernam
+      FROM vbak
+      INTO TABLE @DATA(it_vbak).
+
+    IF it_vbak IS NOT INITIAL.
+      LOOP AT it_vbak INTO DATA(wa_vbak).
+        wa_entity-vbeln = wa_vbak-vbeln.
+        wa_entity-ernam = wa_vbak-ernam.
+        APPEND wa_entity TO et_entityset.
+        CLEAR : wa_vbak,wa_entity.
+      ENDLOOP.
+    ENDIF.
+
+
+  ENDMETHOD.
+  
+    METHOD saleitemset_get_entity.
+
+    READ TABLE it_key_tab INTO DATA(wa_key) WITH KEY name = 'VBELN' TRANSPORTING value.
+    IF sy-subrc IS INITIAL.
+      DATA(v_vbeln) = wa_key-value.
+    ENDIF.
+
+    IF v_vbeln IS NOT INITIAL.
+      SELECT SINGLE vbeln,posnr,matnr
+        FROM vbap INTO @DATA(wa_vbap)
+        WHERE vbeln EQ @v_vbeln.
+    ENDIF.
+
+    IF wa_vbap IS NOT INITIAL.
+      er_entity-vbeln = wa_vbap-vbeln.
+      er_entity-posnr = wa_vbap-posnr.
+      er_entity-matnr = wa_vbap-matnr.
+    ENDIF.
+
+  ENDMETHOD.
+  
+    METHOD saleitemset_get_entityset.
+
+    DATA : wa_entity LIKE LINE OF et_entityset.
+    BREAK-POINT.
+    READ TABLE it_key_tab INTO DATA(wa_key) INDEX 1.
+    IF sy-subrc IS INITIAL.
+      CASE wa_key-name.
+        WHEN 'VBELN'.
+          DATA : wa_vbak TYPE zcl_zsr_assoc_01_mpc=>ts_saleheader.
+          TRY.
+              CALL METHOD me->saleheaderset_get_entity
+                EXPORTING
+                  iv_entity_name     = iv_entity_name
+                  iv_entity_set_name = iv_entity_set_name
+                  iv_source_name     = iv_source_name
+                  it_key_tab         = it_key_tab
+                  it_navigation_path = it_navigation_path
+                IMPORTING
+                  er_entity          = wa_vbak.
+            CATCH /iwbep/cx_mgw_busi_exception.
+            CATCH /iwbep/cx_mgw_tech_exception .
+          ENDTRY.
+      ENDCASE.
+    ENDIF.
+
+    IF wa_vbak IS NOT INITIAL.
+      SELECT vbeln,posnr,matnr FROM vbap
+        INTO TABLE @DATA(it_vbap)
+        WHERE vbeln EQ @wa_vbak-vbeln.
+    ELSE.
+      SELECT vbeln,posnr,matnr
+        FROM vbap
+        INTO TABLE @DATA(it_vbap1).
+    ENDIF.
+
+    IF it_vbap1 IS NOT INITIAL.
+      it_vbap = it_vbap1.
+    ENDIF.
+
+    LOOP AT it_vbap INTO DATA(wa_vbap).
+      wa_entity-vbeln = wa_vbap-vbeln.
+      wa_entity-posnr = wa_vbap-posnr.
+      wa_entity-matnr = wa_vbap-matnr.
+      APPEND wa_entity TO et_entityset.
+      CLEAR : wa_entity,wa_vbap.
+    ENDLOOP.
+
+
+  ENDMETHOD.
+  
+  URL : /sap/opu/odata/SAP/ZSR_ASSOC_SRV_01/SaleHeaderSet('0000000004')/SaleItemSet
+  
+  
